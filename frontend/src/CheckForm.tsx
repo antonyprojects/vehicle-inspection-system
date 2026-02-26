@@ -1,20 +1,38 @@
 import { useState, useEffect } from "react";
-import type { Vehicle, CheckItem, CheckItemKey, ErrorResponse } from "./types";
+import type {
+  Vehicle,
+  CheckItem,
+  CheckItemKey,
+  CheckItemStatus,
+  ErrorResponse,
+} from "./types";
 import { api } from "./api";
 
-const CHECK_ITEMS: CheckItemKey[] = ["TYRES", "BRAKES", "LIGHTS"];
+const CHECK_ITEMS: CheckItemKey[] = [
+  "TYRES",
+  "BRAKES",
+  "LIGHTS",
+  "OIL",
+  "COOLANT",
+];
+
+const NOTE_MAX_LENGTH = 300;
 
 interface Props {
   onSuccess: () => void;
+  showToast: (message: string, type: "success" | "error") => void;
 }
 
-export function CheckForm({ onSuccess }: Props) {
+function buildDefaultItems(): CheckItem[] {
+  return CHECK_ITEMS.map((key) => ({ key, status: "OK" as CheckItemStatus }));
+}
+
+export function CheckForm({ onSuccess, showToast }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [odometerKm, setOdometerKm] = useState("");
-  const [items, setItems] = useState<CheckItem[]>(
-    CHECK_ITEMS.map((key) => ({ key, status: true as unknown as "OK" })),
-  );
+  const [items, setItems] = useState<CheckItem[]>(buildDefaultItems());
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -23,14 +41,19 @@ export function CheckForm({ onSuccess }: Props) {
     api.getVehicles().then(setVehicles).catch(console.error);
   }, []);
 
-  const handleItemStatusChange = (key: CheckItemKey, status: boolean) => {
+  const handleItemStatusChange = (
+    key: CheckItemKey,
+    status: CheckItemStatus,
+  ) => {
     setItems((prev) =>
-      prev.map((item) =>
-        item.key === key
-          ? { ...item, status: status as unknown as "OK" | "FAIL" }
-          : item,
-      ),
+      prev.map((item) => (item.key === key ? { ...item, status } : item)),
     );
+  };
+
+  const handleOdometerChange = (value: string) => {
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+      setOdometerKm(value);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,23 +67,29 @@ export function CheckForm({ onSuccess }: Props) {
         vehicleId: selectedVehicle,
         odometerKm: parseFloat(odometerKm),
         items,
+        ...(note.trim() && { note: note.trim() }),
       });
 
-      // Reset form and display success notification
       setSelectedVehicle("");
       setOdometerKm("");
-      setItems(
-        CHECK_ITEMS.map((key) => ({ key, status: true as unknown as "OK" })),
-      );
+      setItems(buildDefaultItems());
+      setNote("");
       onSuccess();
+      showToast("Inspection submitted successfully!", "success");
     } catch (err: unknown) {
       const errorResponse = err as ErrorResponse;
       if (errorResponse.error?.details) {
-        setValidationErrors(
-          errorResponse.error.details.map((d) => `${d.field}: ${d.reason}`),
+        const messages = errorResponse.error.details.map(
+          (d) => `${d.field}: ${d.reason}`,
+        );
+        setValidationErrors(messages);
+        showToast(
+          `Validation failed: ${errorResponse.error.details.length} error(s)`,
+          "error",
         );
       } else {
         setError("Failed to submit check. Please try again.");
+        showToast("Failed to submit inspection. Please try again.", "error");
       }
     } finally {
       setLoading(false);
@@ -104,8 +133,9 @@ export function CheckForm({ onSuccess }: Props) {
         <input
           id="odometer"
           type="text"
+          inputMode="decimal"
           value={odometerKm}
-          onChange={(e) => setOdometerKm(e.target.value)}
+          onChange={(e) => handleOdometerChange(e.target.value)}
           placeholder="Enter odometer reading"
           required
         />
@@ -117,17 +147,48 @@ export function CheckForm({ onSuccess }: Props) {
           {items.map((item) => (
             <div key={item.key} className="checklist-item">
               <span className="item-label">{item.key}</span>
-              <select
-                value={String(item.status)}
-                onChange={(e) =>
-                  handleItemStatusChange(item.key, e.target.value === "true")
-                }>
-                <option value="true">OK</option>
-                <option value="false">FAIL</option>
-              </select>
+              <div className="radio-group">
+                <label>
+                  <input
+                    type="radio"
+                    name={`status-${item.key}`}
+                    checked={item.status === "OK"}
+                    onChange={() => handleItemStatusChange(item.key, "OK")}
+                  />
+                  OK
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name={`status-${item.key}`}
+                    checked={item.status === "FAIL"}
+                    onChange={() => handleItemStatusChange(item.key, "FAIL")}
+                  />
+                  FAIL
+                </label>
+              </div>
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="note">Notes (optional)</label>
+        <textarea
+          id="note"
+          value={note}
+          onChange={(e) => {
+            if (e.target.value.length <= NOTE_MAX_LENGTH) {
+              setNote(e.target.value);
+            }
+          }}
+          placeholder="Add any notes about this inspection..."
+          rows={3}
+          maxLength={NOTE_MAX_LENGTH}
+        />
+        <small>
+          {note.length}/{NOTE_MAX_LENGTH}
+        </small>
       </div>
 
       <button type="submit" disabled={loading}>

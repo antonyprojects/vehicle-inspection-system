@@ -6,22 +6,23 @@ type IssueFilter = "all" | "true" | "false";
 
 interface Props {
   refreshTrigger?: number;
+  onDelete: () => void;
+  showToast: (message: string, type: "success" | "error") => void;
 }
 
-export function CheckHistory({ refreshTrigger }: Props) {
+export function CheckHistory({ refreshTrigger, onDelete, showToast }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [hasIssueFilter, setHasIssueFilter] = useState<IssueFilter>("all");
   const [checks, setChecks] = useState<Check[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Track which params fetched
   const [lastFetchedParams, setLastFetchedParams] = useState<{
     vehicle: string;
     filter: IssueFilter;
     trigger: number | undefined;
   } | null>(null);
 
-  // Derive loading state: loading if a vehicle selected but params don't match last fetch
   const loading =
     selectedVehicle !== "" &&
     (lastFetchedParams === null ||
@@ -33,7 +34,6 @@ export function CheckHistory({ refreshTrigger }: Props) {
     api.getVehicles().then(setVehicles).catch(console.error);
   }, []);
 
-  // Fetch checks when filters change or refreshTrigger updates
   useEffect(() => {
     if (!selectedVehicle) {
       return;
@@ -69,6 +69,24 @@ export function CheckHistory({ refreshTrigger }: Props) {
     if (!vehicleId) {
       setChecks([]);
       setLastFetchedParams(null);
+    }
+  };
+
+  const handleDelete = async (checkId: string) => {
+    if (!confirm("Are you sure you want to delete this inspection record?")) {
+      return;
+    }
+
+    setDeletingId(checkId);
+    try {
+      await api.deleteCheck(checkId);
+      setChecks((prev) => prev.filter((c) => c.id !== checkId));
+      showToast("Inspection record deleted.", "success");
+      onDelete();
+    } catch {
+      showToast("Failed to delete inspection record.", "error");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -129,10 +147,20 @@ export function CheckHistory({ refreshTrigger }: Props) {
                 <span className="check-date">
                   {formatDate(check.createdAt)}
                 </span>
-                <span
-                  className={`status-badge ${check.hasIssue ? "fail" : "ok"}`}>
-                  {check.hasIssue ? "⚠ Has Issues" : "✓ All OK"}
-                </span>
+                <div className="check-header-actions">
+                  <span
+                    className={`status-badge ${check.hasIssue ? "fail" : "ok"}`}>
+                    {check.hasIssue ? "⚠ Has Issues" : "✓ All OK"}
+                  </span>
+                  <button
+                    type="button"
+                    className="delete-btn"
+                    disabled={deletingId === check.id}
+                    onClick={() => handleDelete(check.id)}
+                    title="Delete inspection record">
+                    {deletingId === check.id ? "…" : "✕"}
+                  </button>
+                </div>
               </div>
 
               <div className="check-details">
