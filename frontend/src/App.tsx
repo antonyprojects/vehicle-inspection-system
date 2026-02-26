@@ -7,7 +7,6 @@ import "./App.css";
 
 function App() {
   const [refreshKey, setRefreshKey] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { toasts, showToast, dismissToast } = useToast();
 
   const handleCheckSubmitted = () => {
@@ -23,11 +22,15 @@ function App() {
       <main>
         <div className="container">
           <div className="left-panel">
-            <CheckForm onSuccess={handleCheckSubmitted} />
+            <CheckForm onSuccess={handleCheckSubmitted} showToast={showToast} />
           </div>
 
           <div className="right-panel">
-            <CheckHistory refreshTrigger={refreshKey} />
+            <CheckHistory
+              refreshTrigger={refreshKey}
+              onDelete={handleCheckSubmitted}
+              showToast={showToast}
+            />
           </div>
         </div>
       </main>
