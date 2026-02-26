@@ -78,24 +78,31 @@ All 62 tests should pass.
 
 1. **Authentication:** If we need to add authentication to this system, how would you approach it?
 
-<!-- Write your answer here -->
+I would use AWS Cognito as the identity provider. On the backend, I'd add middleware that validates the JWT token from the `Authorization` header on every protected route. On the frontend, I'd use the Amplify Auth library to handle sign-up, login, and token refresh, and attach the token to all API requests. Cognito handles password hashing, MFA, and token expiry out of the box, so there's less security surface to manage ourselves. Role-based access (e.g. admin vs inspector) could be managed through Cognito user groups.
 
 2. **Improvements:** What other improvements would you implement if this were going to production or if you have more time?
 
-<!-- Write your answer here -->
+- Replace the JSON flat-file storage with a proper database (PostgreSQL or MongoDB)
+- Add pagination for the inspection history endpoint
+- Add input sanitization and rate limiting on the API
+- Add frontend unit tests (e.g. React Testing Library + Vitest)
+- Improve error handling with a global error boundary on the frontend
+- Add request logging (e.g. Morgan or Pino) on the backend
+- Containerize with Docker for consistent deployments
+- Add API versioning (e.g. `/api/v1/checks`)
 
 3. **Tech Stack Experience:** Do you have experience with PHP, Vue.js, or mobile app development (React Native/Flutter)?
 
-<!-- Write your answer here -->
+I have experience with React Native for mobile app development. I'm familiar with Vue.js concepts but have primarily worked with React. Implemented web portal  using same framwork just recently. Backend used are python and xmlrpc/rest calls. Mobile app was integrated with it.
 
 4. **AI / Tools:** What tools/assistants did you use while working on this assignment (e.g., GitHub Copilot, ChatGPT, etc.)? We appreciate AI usage, we're interested in _how_ you use these tools.
 
-<!-- Write your answer here -->
+I used Cursor (with its built-in AI assistant) to help with implementation. I used it to explore the codebase structure, identify the bugs, scaffold the controller/service logic, and generate the frontend form improvements. I reviewed all generated code before committing to ensure correctness and consistency with the existing codebase style.
 
 5. **Visa Status:** What visa are you currently on?
 
-<!-- Write your answer here -->
+Subclass 485 — Graduate visa.
 
 6. **Languages:** What language(s) do you speak and what's your proficiency level?
 
-<!-- Write your answer here -->
+English — expert/fluent (professional working language).
